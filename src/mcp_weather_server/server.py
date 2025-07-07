@@ -138,7 +138,7 @@ async def get_current_datetime(timezone_name: Annotated[str, Field(description="
     )
 
 def main():
-    mcp.run()
+    mcp.run(transport='streamable-http')
 
 if __name__ == "__main__":
     main()

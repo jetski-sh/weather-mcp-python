@@ -1,11 +1,28 @@
-FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+# https://docs.astral.sh/uv/guides/integration/docker/#non-editable-installs
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS builder
 
-# Set the working directory
 WORKDIR /app
 
-# Copy the current directory contents into the container at /app
+COPY uv.lock uv.lock
+COPY pyproject.toml pyproject.toml
+
+# Install dependencies
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-install-project --no-editable
+
 COPY . /app
 
-RUN (uv venv .venv) && (. .venv/bin/activate) && (uv pip install mcp_weather_server)
+# Sync the project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-editable
 
-CMD ["uv","run","mcp_weather_server"]
+FROM python:3.13-slim
+
+RUN groupadd -g 1000 app && \
+    useradd -u 1000 -g app -m app
+
+# Copy the environment, but not the source code
+COPY --from=builder --chown=app:app /app/.venv /app/.venv
+ENV FASTMCP_HOST=0.0.0.0
+
+CMD ["/app/.venv/bin/mcp_weather_server"]
